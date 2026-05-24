@@ -1,0 +1,558 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="YOLO Vision Tracker — Real-time object tracking with Kalman + SG filtering">
+    <title>YOLO Vision Tracker</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&display=swap" rel="stylesheet">
+</head>
+<body>
+
+<!-- ══════════════════════════════════════════════════════════
+     VIEW 1 — Landing Page
+     ══════════════════════════════════════════════════════════ -->
+<div id="view-landing" class="view active">
+    <div class="landing-content">
+        <div class="logo-icon large-icon"></div>
+        <h1>YOLO Vision Tracker</h1>
+        <p class="subtitle">Select your operation mode to begin.</p>
+
+        <div class="choice-container">
+            <div class="choice-card" onclick="App.start('live')">
+                <div class="choice-icon">🔴</div>
+                <h3>Live Camera</h3>
+                <p>Track objects in real-time using your webcam with Kalman + SG filtering.</p>
+            </div>
+            <div class="choice-card" onclick="App.start('upload_prompt')">
+                <div class="choice-icon">📹</div>
+                <h3>Processed Video</h3>
+                <p>Upload a video file and run Detection + Kalman + SG + BOCPD pipeline.</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+<!-- ══════════════════════════════════════════════════════════
+     VIEW 2 — Live Camera Dashboard
+     ══════════════════════════════════════════════════════════ -->
+<div id="view-live" class="view">
+    <header class="app-header">
+        <div class="logo">
+            <div class="logo-icon" style="width:24px;height:24px"></div>
+            <h2>Live Tracker</h2>
+        </div>
+        <button class="btn btn-secondary" onclick="App.goHome()">← Home</button>
+    </header>
+
+    <div class="dashboard-grid">
+        <!-- Left: Video feed + Controls -->
+        <div class="left-col">
+            <div class="video-container glass-panel">
+                <img id="live-feed" src="" alt="Live camera stream">
+            </div>
+            <div class="control-bar glass-panel">
+                <div class="timer" id="live-timer">00:00:00</div>
+                <div class="actions">
+                    <button class="btn btn-primary lg" id="btn-live-pause"
+                            onclick="App.toggleLivePause()" disabled>Pause</button>
+                    <button class="btn btn-success lg" id="btn-live-session"
+                            onclick="App.toggleLiveSession()">Start Session</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Right: Live analytics (scrollable) -->
+        <div class="right-col glass-panel analytics-col">
+            <h3 class="panel-title">⚡ Live Analysis</h3>
+            <div class="analytics-grid">
+                <div class="analytic-card">
+                    <div class="analytic-label">State</div>
+                    <div class="analytic-value" id="live-state">Waiting</div>
+                </div>
+                <div class="analytic-card">
+                    <div class="analytic-label">Direction</div>
+                    <div class="analytic-value" id="live-direction">--</div>
+                </div>
+                <div class="analytic-card highlight-primary">
+                    <div class="analytic-label">Velocity Y</div>
+                    <div class="analytic-value" id="live-v_y">--</div>
+                    <div class="analytic-unit">m/s</div>
+                </div>
+                <div class="analytic-card highlight-red">
+                    <div class="analytic-label">Accel Y</div>
+                    <div class="analytic-value" id="live-accel_y">--</div>
+                    <div class="analytic-unit">m/s²</div>
+                </div>
+                <div class="analytic-card">
+                    <div class="analytic-label">Smooth Y</div>
+                    <div class="analytic-value" id="live-y_smooth">--</div>
+                    <div class="analytic-unit">m</div>
+                </div>
+                <div class="analytic-card">
+                    <div class="analytic-label">Confidence</div>
+                    <div class="analytic-value" id="live-confidence">--</div>
+                </div>
+                <div class="analytic-card">
+                    <div class="analytic-label">Ball X</div>
+                    <div class="analytic-value" id="live-ball_x">--</div>
+                </div>
+                <div class="analytic-card">
+                    <div class="analytic-label">Ball Y</div>
+                    <div class="analytic-value" id="live-ball_y">--</div>
+                </div>
+            </div>
+            <div class="analytics-footer">
+                <div class="footer-stat"><span class="footer-label">Max |V|</span><span class="footer-value text-primary" id="live-max_v_y">--</span></div>
+                <div class="footer-stat"><span class="footer-label">Avg V</span><span class="footer-value" id="live-avg_v_y">--</span></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+<!-- ══════════════════════════════════════════════════════════
+     VIEW 3 — Video Processing Dashboard
+     ══════════════════════════════════════════════════════════ -->
+<div id="view-video" class="view">
+    <header class="app-header">
+        <div class="logo">
+            <div class="logo-icon" style="width:24px;height:24px"></div>
+            <h2>Video Processor</h2>
+        </div>
+        <button class="btn btn-secondary" onclick="App.goHome()">← Home</button>
+    </header>
+
+    <div class="dashboard-grid">
+        <!-- Left: Video feed + Upload zone + Controls -->
+        <div class="left-col">
+            <div class="video-container glass-panel" style="position:relative">
+                <div id="upload-zone" class="upload-zone">
+                    <div class="upload-icon">📂</div>
+                    <h2>Upload Raw Video</h2>
+                    <p class="text-muted">Select a video file to run the full pipeline</p>
+                    <p class="text-muted" style="font-size:0.8rem;margin-top:0.5rem">
+                        Detection → Kalman → SG Filter → BOCPD
+                    </p>
+                    <input type="file" id="video-upload-input"
+                           accept="video/mp4,video/avi,video/mov"
+                           style="display:none" onchange="App.handleUpload()">
+                    <button class="btn btn-primary mt-4"
+                            onclick="document.getElementById('video-upload-input').click()">
+                        Select File
+                    </button>
+                    <p class="text-muted mt-2" id="upload-status" style="font-size:0.85rem">
+                        Formats: MP4, AVI, MOV
+                    </p>
+                </div>
+                <img id="video-feed" src="" alt="Processed video stream">
+            </div>
+
+            <div class="control-bar glass-panel" style="flex-direction:column;align-items:stretch">
+                <div class="timeline-container">
+                    <span class="timeline-time" id="video-timer-current">00:00</span>
+                    <input type="range" id="video-scrubber" min="0" max="100"
+                           value="0" step="0.1"
+                           onmouseup="App.seekVideo(this.value)"
+                           ontouchend="App.seekVideo(this.value)">
+                    <span class="timeline-time" id="video-timer-total">00:00</span>
+                </div>
+                <div style="display:flex;justify-content:space-between;align-items:center">
+                    <div class="timer" id="video-timer">00:00:00</div>
+                    <div class="actions">
+                        <button class="btn btn-primary lg" id="btn-video-play"
+                                onclick="App.toggleVideoState()">Play</button>
+                        <button class="btn btn-success lg"
+                                onclick="App.stopSession('video')">Complete Analysis</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Right: Video analytics (scrollable) -->
+        <div class="right-col glass-panel analytics-col">
+            <h3 class="panel-title">🎯 Frame Analysis</h3>
+            <div class="analytics-grid">
+                <div class="analytic-card">
+                    <div class="analytic-label">State</div>
+                    <div class="analytic-value" id="video-state">Waiting</div>
+                </div>
+                <div class="analytic-card">
+                    <div class="analytic-label">Direction</div>
+                    <div class="analytic-value" id="video-direction">--</div>
+                </div>
+                <div class="analytic-card highlight-primary">
+                    <div class="analytic-label">Velocity Y</div>
+                    <div class="analytic-value" id="video-v_y">--</div>
+                    <div class="analytic-unit">m/s</div>
+                </div>
+                <div class="analytic-card highlight-red">
+                    <div class="analytic-label">Accel Y</div>
+                    <div class="analytic-value" id="video-accel_y">--</div>
+                    <div class="analytic-unit">m/s²</div>
+                </div>
+                <div class="analytic-card">
+                    <div class="analytic-label">Smooth Y</div>
+                    <div class="analytic-value" id="video-y_smooth">--</div>
+                    <div class="analytic-unit">m</div>
+                </div>
+                <div class="analytic-card">
+                    <div class="analytic-label">Confidence</div>
+                    <div class="analytic-value" id="video-confidence">--</div>
+                </div>
+                <div class="analytic-card">
+                    <div class="analytic-label">Ball X</div>
+                    <div class="analytic-value" id="video-ball_x">--</div>
+                </div>
+                <div class="analytic-card">
+                    <div class="analytic-label">Ball Y</div>
+                    <div class="analytic-value" id="video-ball_y">--</div>
+                </div>
+            </div>
+            <div class="analytics-footer">
+                <div class="footer-stat"><span class="footer-label">Max |V|</span><span class="footer-value text-primary" id="video-max_v_y">--</span></div>
+                <div class="footer-stat"><span class="footer-label">Avg V</span><span class="footer-value" id="video-avg_v_y">--</span></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+<!-- ══════════════════════════════════════════════════════════
+     VIEW 4 — Session Results
+     ══════════════════════════════════════════════════════════ -->
+<div id="view-results" class="view">
+    <div class="results-container">
+        <h1 class="results-title">Session Complete</h1>
+        <p class="subtitle text-muted text-center">Full pipeline analysis summary</p>
+
+        <div class="stats-grid mt-4" style="grid-template-columns:repeat(2,1fr)">
+            <div class="stat-card glass-panel"><h4>Duration</h4><span class="value" id="res-duration">00:00:00</span></div>
+            <div class="stat-card glass-panel"><h4>Max |Velocity|</h4><span class="value text-primary" id="res-max-v">--</span><span class="card-unit">m/s</span></div>
+        </div>
+
+        <div class="stats-grid mt-4" style="grid-template-columns:repeat(2,1fr)">
+            <div class="stat-card glass-panel"><h4>Avg Velocity</h4><span class="value" id="res-avg-v">--</span><span class="card-unit">m/s</span></div>
+            <div class="stat-card glass-panel"><h4>Avg Acceleration</h4><span class="value" id="res-avg-a">--</span><span class="card-unit">m/s²</span></div>
+        </div>
+
+        <div class="text-center" style="margin-top:3rem">
+            <button class="btn btn-primary btn-lg" onclick="App.goHome()">Start New Session</button>
+        </div>
+    </div>
+</div>
+
+
+<!-- Toast notification -->
+<div id="toast" class="toast hidden"></div>
+
+
+<!-- ══════════════════════════════════════════════════════════
+     Application Controller (JS)
+     ══════════════════════════════════════════════════════════ -->
+<script>
+const App = (() => {
+    "use strict";
+
+    // ── Private state ──────────────────────────────────────
+    let sseSource         = null;
+    let globalVideoDuration = 0;
+    let lastReportedTime  = 0;
+    let videoFileReady    = false;
+    let liveSessionStarted = false;
+    let isScrubbing       = false;
+    let currentMode       = null;   // "live" | "video" | null
+
+    // DOM references (cached once on DOMContentLoaded)
+    const $ = (id) => document.getElementById(id);
+
+    // SSE field keys — must match both Python dict keys and HTML element IDs
+    const SSE_FIELDS = [
+        "v_y", "accel_y", "y_smooth", "state", "direction",
+        "confidence", "ball_x", "ball_y",
+        "max_v_y", "avg_v_y",
+    ];
+
+
+    // ── Helpers ────────────────────────────────────────────
+    function formatTime(sec) {
+        sec = Math.max(0, Math.floor(sec));
+        const h = String(Math.floor(sec / 3600)).padStart(2, "0");
+        const m = String(Math.floor((sec % 3600) / 60)).padStart(2, "0");
+        const s = String(sec % 60).padStart(2, "0");
+        return `${h}:${m}:${s}`;
+    }
+
+    function formatShort(sec) {
+        sec = Math.max(0, Math.floor(sec));
+        return String(Math.floor(sec / 60)).padStart(2, "0") + ":" +
+               String(sec % 60).padStart(2, "0");
+    }
+
+    function showToast(msg, ms = 3000) {
+        const t = $("toast");
+        t.textContent = msg;
+        t.classList.remove("hidden");
+        setTimeout(() => t.classList.add("hidden"), ms);
+    }
+
+    function switchView(id) {
+        document.querySelectorAll(".view").forEach(v => v.classList.remove("active"));
+        setTimeout(() => $(id).classList.add("active"), 50);
+    }
+
+    /** Send a control command to the Flask backend. */
+    function postControl(mode, action, timeSec = 0) {
+        return fetch("/video_control", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ mode, action, time: timeSec }),
+        });
+    }
+
+    function setButtonEnabled(btn, enabled) {
+        btn.disabled = !enabled;
+        btn.style.opacity = enabled ? "1" : "0.4";
+        btn.style.cursor  = enabled ? "pointer" : "not-allowed";
+    }
+
+
+    // ── SSE ────────────────────────────────────────────────
+    function connectSSE(mode) {
+        if (sseSource) sseSource.close();
+        sseSource = new EventSource("/stream_stats/" + mode);
+
+        sseSource.onmessage = (event) => {
+            const d = JSON.parse(event.data);
+            if (!d) return;
+
+            // Update all analytics DOM elements
+            SSE_FIELDS.forEach(key => {
+                const el = $(mode + "-" + key);
+                if (el && d[key] !== undefined) el.textContent = d[key];
+            });
+
+            // Sync play/pause buttons
+            if (mode === "live" && liveSessionStarted) {
+                $("btn-live-pause").textContent =
+                    d.play_state === "play" ? "Pause" : "Resume";
+                $("live-feed").classList.toggle("paused", d.play_state === "pause");
+            } else if (mode === "video") {
+                $("btn-video-play").textContent =
+                    d.play_state === "play" ? "Pause" : "Play";
+                $("video-feed").classList.toggle("paused", d.play_state === "pause");
+            }
+
+            // Timer
+            if (d.time !== undefined) {
+                lastReportedTime = d.time;
+                $(mode + "-timer").textContent = formatTime(d.time);
+            }
+
+            // Video scrubber (skip while user is dragging)
+            if (mode === "video" && d.duration && !isScrubbing) {
+                globalVideoDuration = d.duration;
+                $("video-timer-total").textContent   = formatShort(d.duration);
+                $("video-timer-current").textContent  = formatShort(d.time);
+                if (d.duration > 0) {
+                    $("video-scrubber").value = (d.time / d.duration) * 100;
+                }
+            }
+        };
+    }
+
+
+    // ── Navigation ─────────────────────────────────────────
+    function goHome() {
+        postControl("live", "pause");
+        postControl("video", "pause");
+        if (sseSource) { sseSource.close(); sseSource = null; }
+        videoFileReady = false;
+        liveSessionStarted = false;
+        currentMode = null;
+
+        $("live-feed").src  = "";
+        $("video-feed").src = "";
+        $("upload-zone").style.display = "flex";
+        $("upload-status").textContent = "Formats: MP4, AVI, MOV";
+        $("video-upload-input").value = "";
+
+        switchView("view-landing");
+    }
+
+
+    function start(mode) {
+        if (mode === "live") {
+            currentMode = "live";
+            liveSessionStarted = false;
+            switchView("view-live");
+
+            $("live-timer").textContent = "00:00:00";
+
+            // Pause button starts disabled
+            const pauseBtn = $("btn-live-pause");
+            setButtonEnabled(pauseBtn, false);
+            pauseBtn.textContent = "Pause";
+
+            // Session button starts as "Start Session"
+            const sessionBtn = $("btn-live-session");
+            sessionBtn.textContent = "Start Session";
+            sessionBtn.className = "btn btn-success lg";
+
+            // Camera OFF until Start Session
+            $("live-feed").src = "";
+            $("live-feed").classList.add("paused");
+            postControl("live", "pause");
+
+        } else if (mode === "upload_prompt") {
+            currentMode = "video";
+            videoFileReady = false;
+            switchView("view-video");
+
+            $("upload-zone").style.display = "flex";
+            $("video-feed").src = "";
+            $("video-timer").textContent          = "00:00:00";
+            $("video-timer-current").textContent   = "00:00";
+            $("video-timer-total").textContent      = "00:00";
+            $("video-scrubber").value = 0;
+            $("btn-video-play").textContent = "Play";
+        }
+    }
+
+
+    // ── Live session lifecycle ──────────────────────────────
+    function toggleLiveSession() {
+        const sessionBtn = $("btn-live-session");
+        const pauseBtn   = $("btn-live-pause");
+
+        if (!liveSessionStarted) {
+            // ▶ START
+            liveSessionStarted = true;
+            sessionBtn.textContent = "Stop Session";
+            sessionBtn.className = "btn btn-danger lg";
+            setButtonEnabled(pauseBtn, true);
+            pauseBtn.textContent = "Pause";
+
+            postControl("live", "play");
+            const feed = $("live-feed");
+            feed.classList.remove("paused");
+            feed.src = "/video_feed_live?t=" + Date.now();
+            connectSSE("live");
+        } else {
+            // ■ STOP
+            stopSession("live");
+        }
+    }
+
+    function toggleLivePause() {
+        if (!liveSessionStarted) return;
+        const btn = $("btn-live-pause");
+        postControl("live", btn.textContent === "Pause" ? "pause" : "play");
+    }
+
+
+    // ── Video controls ─────────────────────────────────────
+    function handleUpload() {
+        const input = $("video-upload-input");
+        if (!input.files.length) return;
+
+        const file = input.files[0];
+        $("upload-status").innerHTML = `Uploading <strong>${file.name}</strong>…`;
+
+        const form = new FormData();
+        form.append("video", file);
+
+        fetch("/upload_video", { method: "POST", body: form })
+            .then(r => r.json())
+            .then(data => {
+                if (data.message) {
+                    videoFileReady = true;
+                    $("upload-zone").style.display = "none";
+                    const feed = $("video-feed");
+                    feed.src = "/video_feed_file?t=" + Date.now();
+                    feed.classList.remove("paused");
+                    $("btn-video-play").textContent = "Pause";
+                    connectSSE("video");
+                    showToast("✅ Video uploaded & processing started!");
+                } else {
+                    $("upload-status").textContent = "Upload failed.";
+                    showToast("❌ Upload failed!");
+                }
+            })
+            .catch(() => {
+                $("upload-status").textContent = "Network error!";
+                showToast("❌ Network error.");
+            });
+    }
+
+    function toggleVideoState() {
+        if (!videoFileReady) {
+            showToast("⚠️ Please upload a video file first!");
+            return;
+        }
+        const btn = $("btn-video-play");
+        postControl("video", btn.textContent === "Pause" ? "pause" : "play");
+    }
+
+    function seekVideo(percent) {
+        isScrubbing = false;
+        if (!videoFileReady) {
+            showToast("⚠️ Please upload a video file first!");
+            $("video-scrubber").value = 0;
+            return;
+        }
+        if (globalVideoDuration <= 0) return;
+        const t = (percent / 100) * globalVideoDuration;
+        postControl("video", "seek", t).then(() => postControl("video", "play"));
+    }
+
+
+    // ── Stop & Results ─────────────────────────────────────
+    function stopSession(mode) {
+        postControl(mode, "pause");
+        $("live-feed").src  = "";
+        $("video-feed").src = "";
+        if (sseSource) { sseSource.close(); sseSource = null; }
+
+        fetch("/session_summary/" + mode)
+            .then(r => r.json())
+            .then(d => {
+                $("res-duration").textContent = formatTime(mode === "video" ? lastReportedTime : d.elapsed);
+                $("res-max-v").textContent    = d.max_velocity;
+                $("res-avg-v").textContent    = d.avg_velocity;
+                $("res-avg-a").textContent    = d.avg_accel;
+                switchView("view-results");
+            })
+            .catch(() => {
+                $("res-duration").textContent = formatTime(lastReportedTime);
+                switchView("view-results");
+            });
+    }
+
+
+    // ── Initialisation ─────────────────────────────────────
+    document.addEventListener("DOMContentLoaded", () => {
+        const scrubber = $("video-scrubber");
+        scrubber.addEventListener("mousedown",  () => { isScrubbing = true; });
+        scrubber.addEventListener("touchstart", () => { isScrubbing = true; });
+    });
+
+
+    // ── Public API ─────────────────────────────────────────
+    return {
+        start,
+        goHome,
+        toggleLiveSession,
+        toggleLivePause,
+        handleUpload,
+        toggleVideoState,
+        seekVideo,
+        stopSession,
+    };
+})();
+</script>
+
+</body>
+</html>

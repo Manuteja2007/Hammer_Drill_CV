@@ -1,0 +1,608 @@
+/*
+ * YOLO Vision Tracker — Stylesheet
+ * =================================
+ * Dark-mode glassmorphic UI for the real-time tracking dashboard.
+ *
+ * Table of contents:
+ *   1. Design Tokens (CSS Custom Properties)
+ *   2. Reset & Base
+ *   3. Glass Panels
+ *   4. SPA View System
+ *   5. Landing Page
+ *   6. Dashboard Layout (Live & Video)
+ *   7. Video Feed & Controls
+ *   8. Timeline Scrubber
+ *   9. Upload Zone
+ *  10. Analytics Panel (Right Column)
+ *  11. Results Page
+ *  12. Toast Notifications
+ *  13. Buttons
+ *  14. Utility Classes
+ */
+
+
+/* ─────────────────────────────────────────────────────────── *
+ *  1. DESIGN TOKENS
+ * ─────────────────────────────────────────────────────────── */
+
+:root {
+    --bg-dark:         #0f1115;
+    --bg-darker:       #050608;
+    --panel-bg:        rgba(26, 29, 36, 0.7);
+
+    --primary:         #6366f1;
+    --primary-hover:   #4f46e5;
+
+    --accent-red:      #ef4444;
+    --accent-red-hover:#dc2626;
+    --accent-green:    #10b981;
+    --accent-amber:    #f59e0b;
+
+    --text-main:       #f8fafc;
+    --text-muted:      #94a3b8;
+    --border-color:    rgba(255, 255, 255, 0.08);
+
+    --radius-sm:       8px;
+    --radius-md:       12px;
+    --radius-lg:       16px;
+    --radius-xl:       20px;
+    --radius-2xl:      24px;
+
+    --transition:      0.2s ease;
+    --transition-slow: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    --transition-view: 0.5s ease;
+}
+
+
+/* ─────────────────────────────────────────────────────────── *
+ *  2. RESET & BASE
+ * ─────────────────────────────────────────────────────────── */
+
+*,
+*::before,
+*::after {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: "Outfit", sans-serif;
+    background-color: var(--bg-darker);
+    background-image:
+        radial-gradient(circle at 15% 50%, rgba(99, 102, 241, 0.08) 0%, transparent 50%),
+        radial-gradient(circle at 85% 30%, rgba(239,  68,  68, 0.05) 0%, transparent 50%);
+    color: var(--text-main);
+    min-height: 100vh;
+    overflow-x: hidden;
+    position: relative;
+}
+
+
+/* ─────────────────────────────────────────────────────────── *
+ *  3. GLASS PANELS
+ * ─────────────────────────────────────────────────────────── */
+
+.glass-panel {
+    background: var(--panel-bg);
+    backdrop-filter: blur(16px);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-xl);
+    padding: 1.5rem;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+}
+
+
+/* ─────────────────────────────────────────────────────────── *
+ *  4. SPA VIEW SYSTEM
+ * ─────────────────────────────────────────────────────────── */
+
+.view {
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity var(--transition-view), visibility var(--transition-view);
+    overflow-y: auto;
+    padding: 2rem;
+}
+
+.view.active {
+    opacity: 1;
+    visibility: visible;
+    z-index: 10;
+}
+
+
+/* ─────────────────────────────────────────────────────────── *
+ *  5. LANDING PAGE
+ * ─────────────────────────────────────────────────────────── */
+
+#view-landing {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background-image:
+        radial-gradient(circle at 50%   0%, rgba(99, 102, 241, 0.15) 0%, transparent 60%),
+        radial-gradient(circle at 50% 100%, rgba(239, 68,  68, 0.10) 0%, transparent 60%);
+}
+
+.landing-content {
+    text-align: center;
+    max-width: 800px;
+    width: 100%;
+}
+
+/* Logo icon */
+.logo-icon {
+    width: 32px;
+    height: 32px;
+    background: linear-gradient(135deg, var(--primary), #a855f7);
+    border-radius: var(--radius-sm);
+    box-shadow: 0 0 20px rgba(99, 102, 241, 0.4);
+    display: inline-block;
+}
+
+.logo-icon.large-icon {
+    width: 64px;
+    height: 64px;
+    margin: 0 auto 1.5rem;
+}
+
+/* Title */
+.landing-content h1 {
+    font-size: 3.5rem;
+    font-weight: 800;
+    margin-bottom: 1rem;
+    background: linear-gradient(135deg, #fff, #94a3b8);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+
+.landing-content .subtitle {
+    font-size: 1.2rem;
+    color: var(--text-muted);
+    margin-bottom: 3.5rem;
+}
+
+/* Mode selection cards */
+.choice-container {
+    display: flex;
+    gap: 2rem;
+    justify-content: center;
+}
+
+.choice-card {
+    flex: 1;
+    background: rgba(26, 29, 36, 0.5);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: var(--radius-2xl);
+    padding: 2.5rem 2rem;
+    cursor: pointer;
+    transition: all var(--transition-slow);
+    backdrop-filter: blur(10px);
+}
+
+.choice-card:hover {
+    transform: translateY(-8px);
+    background: rgba(26, 29, 36, 0.8);
+    border-color: rgba(99, 102, 241, 0.4);
+    box-shadow:
+        0 10px 30px rgba(0, 0, 0, 0.5),
+        0  0  20px rgba(99, 102, 241, 0.15);
+}
+
+.choice-icon {
+    font-size: 3rem;
+    margin-bottom: 1.5rem;
+}
+
+.choice-card h3 {
+    font-size: 1.5rem;
+    margin-bottom: 1rem;
+    color: var(--text-main);
+}
+
+.choice-card p {
+    color: var(--text-muted);
+    line-height: 1.6;
+    font-size: 0.95rem;
+}
+
+
+/* ─────────────────────────────────────────────────────────── *
+ *  6. DASHBOARD LAYOUT (shared by Live & Video views)
+ * ─────────────────────────────────────────────────────────── */
+
+.app-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1.5rem;
+    background: rgba(15, 17, 21, 0.6);
+    padding: 1rem 2rem;
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--border-color);
+}
+
+.app-header .logo {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.app-header h2 {
+    font-weight: 600;
+    font-size: 1.3rem;
+}
+
+.dashboard-grid {
+    display: grid;
+    grid-template-columns: 2fr 1fr;
+    gap: 20px;
+    height: calc(100vh - 140px);
+    min-height: 0;
+}
+
+
+/* ─────────────────────────────────────────────────────────── *
+ *  7. VIDEO FEED & CONTROLS
+ * ─────────────────────────────────────────────────────────── */
+
+.left-col {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    overflow: hidden;
+}
+
+.video-container {
+    flex: 1 1 0;
+    min-height: 0;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #000;
+}
+
+#live-feed,
+#video-feed {
+    max-width: 100%;
+    max-height: 100%;
+    object-fit: contain;
+    transition: filter var(--transition-slow);
+}
+
+#live-feed.paused,
+#video-feed.paused {
+    filter: brightness(0.2) grayscale(100%);
+}
+
+.control-bar {
+    margin-top: 15px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1.2rem 2rem;
+}
+
+.timer {
+    font-family: monospace;
+    font-size: 2.2rem;
+    font-weight: 800;
+    color: var(--text-main);
+    letter-spacing: 2px;
+}
+
+.actions {
+    display: flex;
+    gap: 1rem;
+}
+
+
+/* ─────────────────────────────────────────────────────────── *
+ *  8. TIMELINE SCRUBBER
+ * ─────────────────────────────────────────────────────────── */
+
+.timeline-container {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 0.75rem;
+}
+
+.timeline-container input[type="range"] {
+    flex-grow: 1;
+    accent-color: var(--primary);
+    height: 6px;
+    cursor: pointer;
+}
+
+.timeline-time {
+    font-family: monospace;
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    min-width: 40px;
+}
+
+
+/* ─────────────────────────────────────────────────────────── *
+ *  9. UPLOAD ZONE
+ * ─────────────────────────────────────────────────────────── */
+
+.upload-zone {
+    display: none;
+    position: absolute;
+    inset: 0;
+    background: var(--bg-darker);
+    z-index: 5;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    border: 2px dashed var(--primary);
+    border-radius: var(--radius-xl);
+    transition: border-color var(--transition-slow);
+}
+
+.upload-zone:hover {
+    border-color: var(--accent-amber);
+}
+
+.upload-icon {
+    font-size: 4rem;
+    margin-bottom: 1rem;
+}
+
+
+/* ─────────────────────────────────────────────────────────── *
+ *  10. ANALYTICS PANEL (Right Column)
+ * ─────────────────────────────────────────────────────────── */
+
+.analytics-col {
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto;
+    min-height: 0;
+}
+
+.analytics-col .panel-title {
+    font-size: 1.1rem;
+    font-weight: 700;
+    padding-bottom: 0.75rem;
+    margin-bottom: 0.75rem;
+    border-bottom: 1px solid var(--border-color);
+}
+
+/* 2×4 metric grid */
+.analytics-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    flex-grow: 1;
+}
+
+.analytic-card {
+    background: rgba(0, 0, 0, 0.3);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    padding: 0.8rem;
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    transition: border-color var(--transition);
+}
+
+.analytic-card:hover {
+    border-color: rgba(255, 255, 255, 0.15);
+}
+
+/* Accent stripes */
+.analytic-card.highlight-primary { border-left: 3px solid var(--primary); }
+.analytic-card.highlight-red     { border-left: 3px solid var(--accent-red); }
+.analytic-card.highlight-green   { border-left: 3px solid var(--accent-green); }
+
+.analytic-label {
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--text-muted);
+    margin-bottom: 0.3rem;
+}
+
+.analytic-value {
+    font-size: 1.3rem;
+    font-weight: 800;
+    font-family: monospace;
+    color: var(--text-main);
+    word-break: break-all;
+}
+
+.analytic-unit {
+    font-size: 0.65rem;
+    color: var(--text-muted);
+    margin-top: 2px;
+}
+
+/* Footer strip with cumulative stats */
+.analytics-footer {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 0.75rem;
+    padding-top: 0.75rem;
+    border-top: 1px solid var(--border-color);
+}
+
+.footer-stat {
+    flex: 1;
+    min-width: 70px;
+    background: rgba(0, 0, 0, 0.25);
+    border-radius: var(--radius-sm);
+    padding: 0.5rem;
+    text-align: center;
+}
+
+.footer-label {
+    display: block;
+    font-size: 0.6rem;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    letter-spacing: 0.5px;
+}
+
+.footer-value {
+    display: block;
+    font-size: 0.95rem;
+    font-weight: 700;
+    font-family: monospace;
+    margin-top: 2px;
+}
+
+
+/* ─────────────────────────────────────────────────────────── *
+ *  11. RESULTS PAGE
+ * ─────────────────────────────────────────────────────────── */
+
+#view-results {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.results-container {
+    max-width: 1000px;
+    width: 100%;
+}
+
+.results-title {
+    font-size: 3rem;
+    font-weight: 800;
+    background: linear-gradient(135deg, var(--accent-green), #fff);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    text-align: center;
+}
+
+.stats-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 20px;
+}
+
+.stat-card {
+    text-align: center;
+    padding: 2rem;
+}
+
+.stat-card.small-card {
+    padding: 1.5rem;
+}
+
+.stat-card h4 {
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    margin-bottom: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+.stat-card .value {
+    font-size: 2.5rem;
+    font-weight: 800;
+    font-family: monospace;
+}
+
+.stat-card.small-card .value {
+    font-size: 1.8rem;
+}
+
+.card-unit {
+    display: block;
+    font-size: 0.7rem;
+    color: var(--text-muted);
+    margin-top: 4px;
+}
+
+
+/* ─────────────────────────────────────────────────────────── *
+ *  12. TOAST NOTIFICATIONS
+ * ─────────────────────────────────────────────────────────── */
+
+.toast {
+    position: fixed;
+    bottom: 2rem;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(15, 17, 21, 0.95);
+    color: var(--text-main);
+    border: 1px solid var(--border-color);
+    padding: 0.8rem 2rem;
+    border-radius: var(--radius-md);
+    font-weight: 600;
+    font-size: 0.95rem;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.6);
+    z-index: 9999;
+    transition: opacity var(--transition-slow), transform var(--transition-slow);
+}
+
+.toast.hidden {
+    opacity: 0;
+    pointer-events: none;
+    transform: translateX(-50%) translateY(20px);
+}
+
+
+/* ─────────────────────────────────────────────────────────── *
+ *  13. BUTTONS
+ * ─────────────────────────────────────────────────────────── */
+
+.btn {
+    background: rgba(255, 255, 255, 0.1);
+    color: white;
+    border: 1px solid var(--border-color);
+    padding: 0.6rem 1.2rem;
+    border-radius: var(--radius-sm);
+    font-family: inherit;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all var(--transition);
+}
+
+.btn:hover                { background: rgba(255, 255, 255, 0.2); }
+
+.btn-primary              { background: var(--primary); border: none; }
+.btn-primary:hover        { background: var(--primary-hover); transform: translateY(-2px); }
+
+.btn-danger               { background: var(--accent-red); border: none; }
+.btn-danger:hover         { background: var(--accent-red-hover); transform: translateY(-2px); }
+
+.btn-success              { background: var(--accent-green); border: none; }
+.btn-success:hover        { background: #059669; transform: translateY(-2px); }
+
+.btn-secondary            { background: transparent; border: 1px solid var(--border-color); }
+.btn-secondary:hover      { background: rgba(255, 255, 255, 0.08); }
+
+.btn.lg                   { padding: 1rem 2.5rem; font-size: 1.1rem; border-radius: var(--radius-md); }
+.btn-lg                   { padding: 1rem 3rem;   font-size: 1.15rem; border-radius: 14px; }
+
+
+/* ─────────────────────────────────────────────────────────── *
+ *  14. UTILITY CLASSES
+ * ─────────────────────────────────────────────────────────── */
+
+.text-center  { text-align: center; }
+.text-muted   { color: var(--text-muted); }
+.text-primary { color: var(--primary); }
+.text-green   { color: var(--accent-green); }
+.text-red     { color: var(--accent-red); }
+.text-xl      { font-size: 1.5rem; font-weight: 800; }
+
+.mt-2         { margin-top: 0.5rem; }
+.mt-4         { margin-top: 1.5rem; }
+.mb-4         { margin-bottom: 1.5rem; }
