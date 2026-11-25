@@ -1,0 +1,5 @@
+"""Start the local UI: py -3 run.hammer_drill"""
+from run import main
+
+if __name__ == "__main__":
+    raise SystemExit(main())

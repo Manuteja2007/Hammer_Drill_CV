@@ -1,0 +1,16 @@
+\subsection{Computational Performance and Latency}
+Computational performance was evaluated using a 478 x 850 video containing 476 frames at 29.39 FPS on an Intel Core i5-1135G7 CPU (4 cores, 8 logical processors; approximately 8 GB RAM). CPU FP32 inference used batch size one and an image-size setting of 640. After 20 warm-up iterations, three complete passes were timed using a monotonic high-resolution clock. The evaluated pipeline comprised YOLO detection, Kalman tracking, independent second-order seven-sample polynomial filtering of tracked X and Y coordinates, and first- and second-order derivatives for velocity and acceleration. The fastest tested configuration used 4 inference thread(s), yielding 16.68 FPS for detection through motion estimation and 15.77 FPS when decoding, annotation, JPEG encoding and local loop overhead were included. Mean and 95th-percentile local frame service times were 63.41 and 77.42 ms, respectively, compared with a source-frame budget of 34.02 ms. Neither tested configuration sustained the source frame rate. The measurements establish recorded-video motion-processing performance on this hardware, but do not substantiate full-frame-rate real-time operation. Browser rendering, network transfer and camera buffering were excluded.
+
+\begin{table}[t]
+\centering
+\caption{CPU performance through velocity and acceleration estimation. Local timings include decoding, annotation and JPEG encoding, but exclude network and browser delays.}
+\label{tab:runtime}
+\begin{tabular}{lrrrr}
+\hline
+Setup & Threads & Core FPS & Local FPS & P95 (ms) \\
+\hline
+Default CPU & 4 & 16.68 & 15.77 & 77.42 \\
+One-thread CPU & 1 & 12.81 & 12.40 & 100.34 \\
+\hline
+\end{tabular}
+\end{table}

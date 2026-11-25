@@ -1,8 +1,9 @@
+"""Timestamp-aware local polynomial smoothing and derivatives."""
 from collections import deque
 from dataclasses import dataclass
-from typing import Optional
+import math
 import numpy as np
-from scipy.signal import savgol_filter
+
 
 @dataclass
 class FilterResult:
@@ -11,60 +12,42 @@ class FilterResult:
     acceleration: float
     direction: str
 
+
 class SavgolFilter:
-    """Manages the Savitzky-Golay filtering window for a single coordinate (e.g. Y).
-    Pixel values are converted to metres internally."""
-    
-    def __init__(self, buffer_size: int, poly_order: int, pixels_per_meter: float):
-        self.buffer_size = buffer_size
+    """Savitzky-Golay least-squares fit, also valid for irregular samples.
+
+    Actual timestamps prevent missed detections from becoming adjacent frames.
+    Only measured positions contribute to motion analytics.
+    """
+
+    def __init__(self, buffer_size, poly_order, pixels_per_meter):
+        if buffer_size < 3 or not 2 <= poly_order < buffer_size:
+            raise ValueError("Use a window >= 3 and a polynomial degree >= 2 below it")
+        if pixels_per_meter <= 0:
+            raise ValueError("pixels_per_meter must be positive")
         self.poly_order = poly_order
         self.pixels_per_meter = pixels_per_meter
-        self.y_buffer = deque(maxlen=self.buffer_size)
-        self.prev_y_smooth = None
+        self.samples = deque(maxlen=buffer_size)
 
     def reset(self):
-        """Reset the filter state."""
-        self.y_buffer.clear()
-        self.prev_y_smooth = None
+        self.samples.clear()
 
-    def process(self, y_pixel: int, fps: float) -> Optional[FilterResult]:
-        """Add a pixel measurement and return filtered metrics in metric units."""
-        self.y_buffer.append(y_pixel)
-        
-        n = len(self.y_buffer)
-        if n < 3:
+    def process(self, y_pixel, fps, timestamp=None):
+        if not math.isfinite(fps) or fps <= 0:
+            raise ValueError("fps must be positive and finite")
+        if timestamp is None:
+            timestamp = self.samples[-1][0] + 1 / fps if self.samples else 0.0
+        if not math.isfinite(timestamp) or not math.isfinite(y_pixel):
+            raise ValueError("Measurements must be finite")
+        if self.samples and timestamp <= self.samples[-1][0]:
+            self.reset()
+        self.samples.append((timestamp, y_pixel / self.pixels_per_meter))
+        if len(self.samples) < 3:
             return None
-
-        dt = 1.0 / fps
-        win = n if n % 2 == 1 else n - 1
-        win = max(win, 3)
-        poly = min(self.poly_order, win - 1)
-
-        try:
-            # Convert pixel coords → metres before filtering
-            y = np.array(self.y_buffer, dtype=np.float64) / self.pixels_per_meter
-            
-            y_s = float(savgol_filter(y, win, poly)[-1])
-            v_y = float(savgol_filter(y, win, poly, deriv=1, delta=dt)[-1])
-            a_y = float(savgol_filter(y, win, poly, deriv=2, delta=dt)[-1])
-            
-            # Direction inference (threshold in metres)
-            direction = "→ Stable"
-            if self.prev_y_smooth is not None:
-                diff = y_s - self.prev_y_smooth
-                if diff > 0.0002:
-                    direction = "↓ Down"
-                elif diff < -0.0002:
-                    direction = "↑ Up"
-            
-            self.prev_y_smooth = y_s
-            
-            return FilterResult(
-                y_smooth=y_s,
-                velocity=v_y,
-                acceleration=a_y,
-                direction=direction
-            )
-            
-        except Exception:
-            return None
+        samples = np.asarray(self.samples, dtype=np.float64)
+        coefficients = np.polynomial.polynomial.polyfit(
+            samples[:, 0] - timestamp, samples[:, 1], min(self.poly_order, len(samples) - 1)
+        )
+        velocity = float(coefficients[1])
+        direction = "Down" if velocity > 0.001 else "Up" if velocity < -0.001 else "Stable"
+        return FilterResult(float(coefficients[0]), velocity, float(2 * coefficients[2]), direction)

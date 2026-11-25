@@ -1,0 +1,3 @@
+# Optional CPU accelerator for hand inference. Launchers never install packages.
+-r requirements.txt
+onnxruntime>=1.20,<2

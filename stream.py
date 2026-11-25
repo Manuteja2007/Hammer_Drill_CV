@@ -1,202 +1,257 @@
-"""
-Stream Generator — MJPEG + SSE
-================================
-Composes Detector → Tracker → Filter → Annotator pipeline.
-Handles pause/play/seek and real-time video pacing.
-"""
-
-import time
+"""Managed MJPEG streams: isolated controls, synchronized lifecycle, and pacing."""
 import json
-import numpy as np
+import math
+import time
+from threading import Event, Lock, RLock
+from uuid import uuid4
+
 import cv2
 
 import config
-from state import global_state
-from pipeline import YOLODetector, KalmanTracker, SavgolFilter, Annotator
+from pipeline import Annotator, YOLODetector
+from pipeline.processor import FrameProcessor
+from state import AnalyticsState
 
-# ── Singleton detector instance ────────────────────────────────
-detector = YOLODetector(
-    config.MODEL_PATH,
-    config.CONFIDENCE_THRESHOLD,
-    config.TARGET_CLASS,
-)
+_model_lock = Lock()
+_camera_lock = Lock()
+_detector = None
 
 
-def generate_frames(video_source, mode):
-    """
-    Core MJPEG generator.
+class StreamError(Exception):
+    def __init__(self, message, status=400):
+        super().__init__(message)
+        self.status = status
 
-    Reads frames from *video_source* (0 = webcam, path = file),
-    runs the full detection pipeline, and yields multipart JPEG frames.
-    Respects stream_controls for pause / play / seek.
-    """
-    if detector.model is None:
-        print("[ERROR] YOLO model not loaded.")
-        return
 
-    cap = cv2.VideoCapture(video_source)
-    if not cap.isOpened():
-        print(f"[ERROR] Cannot open video source: {video_source}")
-        return
+def get_detector():
+    global _detector
+    with _model_lock:
+        if _detector is None:
+            try:
+                _detector = YOLODetector(config.MODEL_PATH, config.CONFIDENCE_THRESHOLD, config.TARGET_CLASS)
+            except Exception as exc:
+                raise StreamError("The detection model could not be loaded. Check the model file.", 503) from exc
+        return _detector
 
-    fps = int(cap.get(cv2.CAP_PROP_FPS)) or 30
 
-    # Store duration for video mode
-    if mode == "video":
-        n_frames = cap.get(cv2.CAP_PROP_FRAME_COUNT)
-        duration = n_frames / fps if fps else 0
-        global_state.stream_controls["video"]["duration"] = duration
-        global_state.latest_stats["video"]["duration"] = duration
+class StreamController:
+    def __init__(self, mode, detector_factory=get_detector, capture_factory=cv2.VideoCapture):
+        self.mode = mode
+        self.detector_factory = detector_factory
+        self.capture_factory = capture_factory
+        self.lock = RLock()
+        self.wake = Event()
+        self.analytics = AnalyticsState()
+        self.processor = None
+        self.cap = None
+        self.source = None
+        self.connected = False
+        self.attached = False
+        self.prepared_at = None
+        self.camera_owned = False
+        self.ended = False
+        self.token = None
+        self.last_jpeg = None
+        self.frame_index = 0
+        self.anchor_wall = None
+        self.anchor_media = 0.0
 
-    global_state.reset_analytics(mode)
-    global_state.latest_stats[mode]["fps"] = fps
+    def _open_capture(self):
+        if self.mode == "live" and not self.camera_owned:
+            if not _camera_lock.acquire(blocking=False):
+                raise StreamError("The camera is already in use by another session.", 409)
+            self.camera_owned = True
+        try:
+            self.cap = self.capture_factory(self.source)
+            if not self.cap.isOpened():
+                raise StreamError("Cannot open the camera or video file.", 422)
+        except Exception:
+            self._release_capture()
+            raise
 
-    tracker   = KalmanTracker()
-    sg_filter = SavgolFilter(
-        config.SG_BUFFER_SIZE, config.SG_POLY_ORDER, config.PIXELS_PER_METER
-    )
+    def _release_capture(self):
+        if self.cap is not None:
+            self.cap.release()
+            self.cap = None
+        if self.camera_owned:
+            _camera_lock.release()
+            self.camera_owned = False
 
-    last_jpeg      = None    # cached frame for pause-hold
-    playback_start = None    # wall-clock time when video playback began
-    video_start_ms = 0       # video position (ms) when playback began
+    def open(self, source):
+        with self.lock:
+            if self.connected:
+                raise StreamError("This session already has an open stream. Stop it before restarting.", 409)
+            detector = self.detector_factory()
+            self.source = source
+            self._open_capture()
+            try:
+                reported_fps = float(self.cap.get(cv2.CAP_PROP_FPS))
+                self.fps = reported_fps if math.isfinite(reported_fps) and reported_fps > 0 else 30.0
+                count = float(self.cap.get(cv2.CAP_PROP_FRAME_COUNT))
+                self.duration = max(0.0, count / self.fps) if self.mode == "video" and math.isfinite(count) else 0.0
+                self.processor = FrameProcessor(detector, self.analytics)
+                self.processor.reset(duration=self.duration, fps=self.fps)
+                self.analytics.stats["play_state"] = "play"
+                self.connected, self.ended = True, False
+                self.attached = False
+                self.prepared_at = time.monotonic()
+                self.token = uuid4().hex
+                self.frame_index = 0
+                self.last_jpeg = None
+                self.anchor_wall = None
+                return self.token
+            except Exception:
+                self._release_capture()
+                raise
 
-    # ── Main loop ──────────────────────────────────────────────
-    while True:
-        ctrl  = global_state.stream_controls[mode]
-        sa    = global_state.session_analytics[mode]
-        stats = global_state.latest_stats[mode]
+    def attach(self, token):
+        """Only one MJPEG consumer may advance a session's capture."""
+        with self.lock:
+            self.expire_prepared()
+            if not self.connected or self.token != token:
+                raise StreamError("This stream is no longer available. Start a new session.", 409)
+            if self.attached:
+                raise StreamError("This stream is already open in another view.", 409)
+            self.attached = True
 
-        # 1. Seek
-        if ctrl.get("seek") is not None:
-            cap.set(cv2.CAP_PROP_POS_MSEC, ctrl["seek"] * 1000.0)
-            ctrl["seek"] = None
-            tracker.reset()
-            sg_filter.reset()
-            playback_start = None
-            global_state.reset_analytics(mode)
-            sa = global_state.session_analytics[mode]
+    def expire_prepared(self):
+        """Release a preflight capture if the browser never attaches its image."""
+        with self.lock:
+            if (self.connected and not self.attached and self.prepared_at is not None
+                    and time.monotonic() - self.prepared_at >= config.STREAM_START_TIMEOUT_SECONDS):
+                self.stop()
 
-        # 2. Timer
-        if mode == "video":
-            ms = cap.get(cv2.CAP_PROP_POS_MSEC)
-            stats["time"] = ms / 1000.0 if ms else 0
-        else:
-            now = time.time()
-            if ctrl["state"] == "play":
-                if sa.get("last_tick") is not None:
-                    sa["elapsed"] += now - sa["last_tick"]
-                sa["last_tick"] = now
+    def control(self, action, position=None):
+        with self.lock:
+            if action == "stop":
+                self.stop()
+                return
+            if not self.connected:
+                raise StreamError("Start a stream before changing playback.", 409)
+            if action == "seek":
+                if self.mode != "video":
+                    raise StreamError("Seeking is only supported for uploaded video.")
+                if position is None or not math.isfinite(position) or not 0 <= position <= self.duration:
+                    raise StreamError("Seek time must be within the video duration.")
+                self._seek(position)
+            elif action == "play":
+                if self.ended:
+                    if self.mode == "video":
+                        self._seek(0.0)
+                    else:
+                        self._open_capture()
+                        self.processor.reset(fps=self.fps)
+                        self.frame_index = 0
+                        self.last_jpeg = None
+                        self.ended = False
+                self.analytics.stats["play_state"] = "play"
+            elif action == "pause":
+                self.analytics.stats["play_state"] = "pause"
+                # Do not infer a reversal between measurements separated by a pause.
+                self.processor.filter.reset()
+                self.processor.tracker.reset()
+                self.processor.last_measurement_time = None
+                self.processor.hit_detector.reset_motion()
+                self.processor.hand_guard.reset()
+                self.processor.last_hand_overlay = None
             else:
-                sa["last_tick"] = None
-            stats["time"] = sa.get("elapsed", 0)
+                raise StreamError("Invalid playback action.")
+            self.anchor_wall = None
+            self.wake.set()
 
-        # 3. Pause — keep yielding the last frame to keep the connection alive
-        if ctrl["state"] == "pause":
-            playback_start = None
-            if last_jpeg:
-                yield Annotator.format_multipart_jpeg(last_jpeg)
-            time.sleep(0.1)
-            continue
+    def _seek(self, position):
+        if self.cap is None:
+            self._open_capture()
+        index = int(position * self.fps)
+        if not self.cap.set(cv2.CAP_PROP_POS_FRAMES, index):
+            raise StreamError("This video does not support seeking.", 422)
+        play_state = self.analytics.stats["play_state"]
+        self.frame_index = index
+        self.processor.reset(self.duration, self.fps, index / self.fps)
+        self.analytics.stats["play_state"] = play_state
+        self.ended = False
+        self.last_jpeg = None
 
-        # 4. Read frame
-        ok, frame = cap.read()
-        if not ok:
-            if isinstance(video_source, str):
-                ctrl["state"] = "pause"
-                stats["state"] = "Video Ended"
-                cap.set(cv2.CAP_PROP_POS_FRAMES, 0)
-                continue
-            break
+    def _finish(self, label):
+        if self.processor is not None:
+            self.processor.finalize()
+        self.analytics.stats.update(play_state="pause", state=label)
+        self._release_capture()
+        self.ended = True
+        self.anchor_wall = None
 
-        # 5. Video real-time skip-ahead
-        if mode == "video":
-            now_wall = time.time()
-            cur_ms   = cap.get(cv2.CAP_PROP_POS_MSEC)
-            if playback_start is None:
-                playback_start = now_wall
-                video_start_ms = cur_ms
+    def stop(self):
+        with self.lock:
+            self._finish(self.analytics.stats["state"] if self.ended else "Session Complete")
+            self.connected = False
+            self.attached = False
+            self.prepared_at = None
+            self.token = None
+            self.wake.set()
 
-            target_ms = video_start_ms + (now_wall - playback_start) * 1000.0
-            skipped = 0
-            while cur_ms < target_ms and skipped < 30:
-                ok, frame = cap.read()
-                if not ok:
-                    break
-                cur_ms = cap.get(cv2.CAP_PROP_POS_MSEC)
-                skipped += 1
-            if not ok:
-                ctrl["state"] = "pause"
-                stats["state"] = "Video Ended"
-                cap.set(cv2.CAP_PROP_POS_FRAMES, 0)
-                continue
-            stats["time"] = cur_ms / 1000.0 if cur_ms else 0
+    def snapshot(self):
+        with self.lock:
+            return dict(self.analytics.stats)
 
-        # Mirror webcam
-        if mode == "live":
-            frame = cv2.flip(frame, 1)
+    def summary(self):
+        with self.lock:
+            return self.analytics.summary()
 
-        sa["total_frames"] += 1
-
-        # 6. Detection
-        detections = detector.detect(frame)
-        Annotator.draw_detections(frame, detections)
-        target = detector.get_target(detections)
-
-        # 7. Kalman predict
-        predicted_pos = tracker.predict()
-
-        # 8. Track + Filter
-        if target:
-            sa["detected_frames"] += 1
-            tracker.update(target.center)
-
-            ppm = config.PIXELS_PER_METER
-            stats["ball_x"]     = f"{target.center[0] / ppm:.4f}"
-            stats["ball_y"]     = f"{target.center[1] / ppm:.4f}"
-            stats["confidence"] = f"{target.confidence:.2f}"
-
-            filt = sg_filter.process(target.center[1], fps)
-            if filt:
-                stats["y_smooth"]  = f"{filt.y_smooth:.4f}"
-                stats["v_y"]       = f"{filt.velocity:.4f}"
-                stats["accel_y"]   = f"{filt.acceleration:.4f}"
-                stats["direction"] = filt.direction
-                stats["state"]     = "Tracking"
-
-                if len(sa["all_v_y"]) < config.HISTORY_CAP:
-                    sa["all_v_y"].append(filt.velocity)
-                    sa["all_accel_y"].append(filt.acceleration)
-                    sa["all_y_smooth"].append(filt.y_smooth)
-
-                sa["max_v_y"] = max(sa["max_v_y"], abs(filt.velocity))
-                sa["min_v_y"] = min(sa["min_v_y"], filt.velocity)
-                stats["max_v_y"] = f"{sa['max_v_y']:.4f}"
-
-                avg = float(np.mean(sa["all_v_y"])) if sa["all_v_y"] else 0
-                stats["avg_v_y"] = f"{avg:.4f}"
-            else:
-                stats["state"] = "Buffering SG..."
-        else:
-            sa["lost_frames"] += 1
-            tracker.mark_lost(predicted_pos)
-            stats["state"] = "Lost/Predicting"
-            for k in ("ball_x", "ball_y", "confidence", "direction"):
-                stats[k] = "--"
-
-        # 9. Annotate trail + prediction
-        Annotator.draw_tracker(frame, tracker, predicted_pos)
-
-        # 10. Encode & yield
-        jpeg_bytes = Annotator.encode_jpeg(frame)
-        if jpeg_bytes:
-            last_jpeg = jpeg_bytes          # cache for pause-hold
-            yield Annotator.format_multipart_jpeg(jpeg_bytes)
+    def generate(self, token):
+        try:
+            while True:
+                delay, jpeg = 0.1, None
+                with self.lock:
+                    if not self.connected or self.token != token:
+                        return
+                    self.wake.clear()
+                    if self.analytics.stats["play_state"] == "pause":
+                        jpeg = self.last_jpeg
+                    else:
+                        now = time.monotonic()
+                        if self.anchor_wall is None:
+                            self.anchor_wall = now
+                            self.anchor_media = self.analytics.stats["time"]
+                        ok, frame = self.cap.read()
+                        if not ok:
+                            if self.mode == "video":
+                                self.analytics.stats["time"] = self.frame_index / self.fps
+                                self._finish("Video Ended")
+                            else:
+                                self._finish("Camera Disconnected")
+                            jpeg = self.last_jpeg
+                        else:
+                            self.frame_index += 1
+                            if self.mode == "video":
+                                timestamp = self.frame_index / self.fps
+                            else:
+                                timestamp = self.anchor_media + time.monotonic() - self.anchor_wall
+                                frame = cv2.flip(frame, 1)
+                            self.processor.process(frame, self.fps, timestamp)
+                            jpeg = Annotator.encode_jpeg(frame)
+                            self.last_jpeg = jpeg
+                            delay = (max(0.0, self.anchor_wall + timestamp - self.anchor_media - time.monotonic())
+                                     if self.mode == "video" else 0.0)
+                # Never hold the control lock while waiting or sending a frame.
+                if delay:
+                    self.wake.wait(delay)
+                with self.lock:
+                    if not self.connected or self.token != token:
+                        return
+                if jpeg is not None:
+                    yield Annotator.format_multipart_jpeg(jpeg)
+        except Exception:
+            with self.lock:
+                self._finish("Processing Error")
+            raise
+        finally:
+            with self.lock:
+                if self.token == token:
+                    self.stop()
 
 
-def stream_stats_generator(mode):
-    """SSE generator — pushes analytics at ~10 Hz."""
+def stream_stats_generator(controller, browser_session):
     while True:
-        payload = global_state.latest_stats.get(mode, {}).copy()
-        payload["play_state"] = global_state.stream_controls[mode]["state"]
-        yield f"data: {json.dumps(payload)}\n\n"
+        browser_session.last_seen = time.monotonic()
+        yield f"data: {json.dumps(controller.snapshot())}\n\n"
         time.sleep(0.1)

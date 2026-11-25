@@ -1,0 +1,26 @@
+# Python and local environments
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+.env
+
+# Runtime uploads, generated results, and locally retained media archives
+uploads/*
+!uploads/.gitkeep
+outputs/*
+!outputs/.gitkeep
+data/videos/*
+!data/videos/.gitkeep
+data/archives/*
+!data/archives/.gitkeep
+
+# OS and notebook-generated files
+desktop.ini
+Thumbs.db
+.DS_Store
+.ipynb_checkpoints/

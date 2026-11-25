@@ -1,0 +1,56 @@
+[
+    {
+        "archived_copy":  "data\\archives\\duplicate_videos\\custom_video.mp4",
+        "retained_input":  "data\\videos\\Javed.mp4",
+        "sha256":  "95881ebbe9d30cf0c51a9b9fbff0d20d81bd74a7e5c2d29cc0f6e3b7c231b659",
+        "bytes":  2499604
+    },
+    {
+        "archived_copy":  "data\\archives\\duplicate_videos\\Javed.mp4",
+        "retained_input":  "data\\videos\\Javed.mp4",
+        "sha256":  "95881ebbe9d30cf0c51a9b9fbff0d20d81bd74a7e5c2d29cc0f6e3b7c231b659",
+        "bytes":  2499604
+    },
+    {
+        "archived_copy":  "data\\archives\\duplicate_videos\\Madhav.mp4",
+        "retained_input":  "data\\videos\\Madhav.mp4",
+        "sha256":  "a942be972d482f24fc672f8340a3a3762dbf636669d46bef2504e6dba174d2f3",
+        "bytes":  2781532
+    },
+    {
+        "archived_copy":  "data\\archives\\duplicate_videos\\Madhav2.mp4",
+        "retained_input":  "data\\videos\\Madhav2.mp4",
+        "sha256":  "19895e599122ec9fc8e704fa7e077f670669a224e2f85572d4d703fa26b99503",
+        "bytes":  6677458
+    },
+    {
+        "archived_copy":  "data\\archives\\duplicate_videos\\Madhav_5.mp4",
+        "retained_input":  "data\\videos\\Madhav_5.mp4",
+        "sha256":  "347b5d26fc9c40fe4398552899bfb428553934a774b3f918dc1d64812c4a5ad0",
+        "bytes":  1908651
+    },
+    {
+        "archived_copy":  "data\\archives\\duplicate_videos\\Madhav_6.mp4",
+        "retained_input":  "data\\videos\\Madhav_6.mp4",
+        "sha256":  "6125830e237baa47c065e059a116adbb420961bf71a833489ad4c43cbcc4179f",
+        "bytes":  1355722
+    },
+    {
+        "archived_copy":  "data\\archives\\duplicate_videos\\Madhav_7.mp4",
+        "retained_input":  "data\\videos\\Madhav_7.mp4",
+        "sha256":  "55673938b5cdaaf7167df2679b64f6a6da06137dce9e28b15085d8f0a207903f",
+        "bytes":  1287785
+    },
+    {
+        "archived_copy":  "data\\archives\\duplicate_videos\\Madhav_8.mp4",
+        "retained_input":  "data\\videos\\Madhav_8.mp4",
+        "sha256":  "b3ce6edc350edc09421419b146ef28f639627a165c2e3f80a287aa22bee00a38",
+        "bytes":  2183660
+    },
+    {
+        "archived_copy":  "data\\archives\\duplicate_videos\\Madhav_9.mp4",
+        "retained_input":  "data\\videos\\Madhav_9.mp4",
+        "sha256":  "b47d1468a1591c97ae9f9b95af0573109b6717bd7f0d9153b2c388ffefe7a2f5",
+        "bytes":  6582183
+    }
+]

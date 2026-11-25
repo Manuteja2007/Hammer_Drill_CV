@@ -1,558 +1,342 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="YOLO Vision Tracker — Real-time object tracking with Kalman + SG filtering">
-    <title>YOLO Vision Tracker</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
-    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&display=swap" rel="stylesheet">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="description" content="Record, review and understand your hammer drill practice in one focused workspace.">
+<title>Hammer Drill | Training workspace</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+<script src="{{ url_for('static', filename='app.js') }}" defer>
+</script>
 </head>
 <body>
-
-<!-- ══════════════════════════════════════════════════════════
-     VIEW 1 — Landing Page
-     ══════════════════════════════════════════════════════════ -->
-<div id="view-landing" class="view active">
-    <div class="landing-content">
-        <div class="logo-icon large-icon"></div>
-        <h1>YOLO Vision Tracker</h1>
-        <p class="subtitle">Select your operation mode to begin.</p>
-
-        <div class="choice-container">
-            <div class="choice-card" onclick="App.start('live')">
-                <div class="choice-icon">🔴</div>
-                <h3>Live Camera</h3>
-                <p>Track objects in real-time using your webcam with Kalman + SG filtering.</p>
-            </div>
-            <div class="choice-card" onclick="App.start('upload_prompt')">
-                <div class="choice-icon">📹</div>
-                <h3>Processed Video</h3>
-                <p>Upload a video file and run Detection + Kalman + SG + BOCPD pipeline.</p>
-            </div>
-        </div>
-    </div>
+<a class="skip-link" href="#main">Skip to workspace</a>
+<header class="site-header">
+<a class="brand" href="/" aria-label="Hammer Drill home">
+<span class="brand-mark" aria-hidden="true">H<span>.</span>
+</span>
+<span>HAMMER DRILL<small>TRAINING WORKSPACE</small>
+</span>
+</a>
+<span class="local-label">Local session <span>Video stays on this computer</span>
+</span>
+</header>
+<main id="main">
+<section id="view-landing" class="view active" aria-labelledby="setup-title">
+<div class="page-heading">
+<p class="eyebrow">PRACTICE / REVIEW / IMPROVE</p>
+<h1 id="setup-title">Set up a drill session.</h1>
+<p>Keep your attention on the ball. Review the rhythm, consistency and interruptions after the drill.</p>
 </div>
-
-
-<!-- ══════════════════════════════════════════════════════════
-     VIEW 2 — Live Camera Dashboard
-     ══════════════════════════════════════════════════════════ -->
-<div id="view-live" class="view">
-    <header class="app-header">
-        <div class="logo">
-            <div class="logo-icon" style="width:24px;height:24px"></div>
-            <h2>Live Tracker</h2>
-        </div>
-        <button class="btn btn-secondary" onclick="App.goHome()">← Home</button>
-    </header>
-
-    <div class="dashboard-grid">
-        <!-- Left: Video feed + Controls -->
-        <div class="left-col">
-            <div class="video-container glass-panel">
-                <img id="live-feed" src="" alt="Live camera stream">
-            </div>
-            <div class="control-bar glass-panel">
-                <div class="timer" id="live-timer">00:00:00</div>
-                <div class="actions">
-                    <button class="btn btn-primary lg" id="btn-live-pause"
-                            onclick="App.toggleLivePause()" disabled>Pause</button>
-                    <button class="btn btn-success lg" id="btn-live-session"
-                            onclick="App.toggleLiveSession()">Start Session</button>
-                </div>
-            </div>
-        </div>
-
-        <!-- Right: Live analytics (scrollable) -->
-        <div class="right-col glass-panel analytics-col">
-            <h3 class="panel-title">⚡ Live Analysis</h3>
-            <div class="analytics-grid">
-                <div class="analytic-card">
-                    <div class="analytic-label">State</div>
-                    <div class="analytic-value" id="live-state">Waiting</div>
-                </div>
-                <div class="analytic-card">
-                    <div class="analytic-label">Direction</div>
-                    <div class="analytic-value" id="live-direction">--</div>
-                </div>
-                <div class="analytic-card highlight-primary">
-                    <div class="analytic-label">Velocity Y</div>
-                    <div class="analytic-value" id="live-v_y">--</div>
-                    <div class="analytic-unit">m/s</div>
-                </div>
-                <div class="analytic-card highlight-red">
-                    <div class="analytic-label">Accel Y</div>
-                    <div class="analytic-value" id="live-accel_y">--</div>
-                    <div class="analytic-unit">m/s²</div>
-                </div>
-                <div class="analytic-card">
-                    <div class="analytic-label">Smooth Y</div>
-                    <div class="analytic-value" id="live-y_smooth">--</div>
-                    <div class="analytic-unit">m</div>
-                </div>
-                <div class="analytic-card">
-                    <div class="analytic-label">Confidence</div>
-                    <div class="analytic-value" id="live-confidence">--</div>
-                </div>
-                <div class="analytic-card">
-                    <div class="analytic-label">Ball X</div>
-                    <div class="analytic-value" id="live-ball_x">--</div>
-                </div>
-                <div class="analytic-card">
-                    <div class="analytic-label">Ball Y</div>
-                    <div class="analytic-value" id="live-ball_y">--</div>
-                </div>
-            </div>
-            <div class="analytics-footer">
-                <div class="footer-stat"><span class="footer-label">Max |V|</span><span class="footer-value text-primary" id="live-max_v_y">--</span></div>
-                <div class="footer-stat"><span class="footer-label">Avg V</span><span class="footer-value" id="live-avg_v_y">--</span></div>
-            </div>
-        </div>
-    </div>
+<div class="setup-layout">
+<div>
+<div class="setup-fields">
+<label>Session name <span>Optional</span>
+<input id="session-label" maxlength="80" placeholder="e.g. Arjun - morning practice" autocomplete="off">
+</label>
+<label>Tap target <span>Optional</span>
+<input id="goal-taps" type="number" min="1" max="10000" step="1" placeholder="e.g. 20" inputmode="numeric">
+</label>
 </div>
-
-
-<!-- ══════════════════════════════════════════════════════════
-     VIEW 3 — Video Processing Dashboard
-     ══════════════════════════════════════════════════════════ -->
-<div id="view-video" class="view">
-    <header class="app-header">
-        <div class="logo">
-            <div class="logo-icon" style="width:24px;height:24px"></div>
-            <h2>Video Processor</h2>
-        </div>
-        <button class="btn btn-secondary" onclick="App.goHome()">← Home</button>
-    </header>
-
-    <div class="dashboard-grid">
-        <!-- Left: Video feed + Upload zone + Controls -->
-        <div class="left-col">
-            <div class="video-container glass-panel" style="position:relative">
-                <div id="upload-zone" class="upload-zone">
-                    <div class="upload-icon">📂</div>
-                    <h2>Upload Raw Video</h2>
-                    <p class="text-muted">Select a video file to run the full pipeline</p>
-                    <p class="text-muted" style="font-size:0.8rem;margin-top:0.5rem">
-                        Detection → Kalman → SG Filter → BOCPD
-                    </p>
-                    <input type="file" id="video-upload-input"
-                           accept="video/mp4,video/avi,video/mov"
-                           style="display:none" onchange="App.handleUpload()">
-                    <button class="btn btn-primary mt-4"
-                            onclick="document.getElementById('video-upload-input').click()">
-                        Select File
-                    </button>
-                    <p class="text-muted mt-2" id="upload-status" style="font-size:0.85rem">
-                        Formats: MP4, AVI, MOV
-                    </p>
-                </div>
-                <img id="video-feed" src="" alt="Processed video stream">
-            </div>
-
-            <div class="control-bar glass-panel" style="flex-direction:column;align-items:stretch">
-                <div class="timeline-container">
-                    <span class="timeline-time" id="video-timer-current">00:00</span>
-                    <input type="range" id="video-scrubber" min="0" max="100"
-                           value="0" step="0.1"
-                           onmouseup="App.seekVideo(this.value)"
-                           ontouchend="App.seekVideo(this.value)">
-                    <span class="timeline-time" id="video-timer-total">00:00</span>
-                </div>
-                <div style="display:flex;justify-content:space-between;align-items:center">
-                    <div class="timer" id="video-timer">00:00:00</div>
-                    <div class="actions">
-                        <button class="btn btn-primary lg" id="btn-video-play"
-                                onclick="App.toggleVideoState()">Play</button>
-                        <button class="btn btn-success lg"
-                                onclick="App.stopSession('video')">Complete Analysis</button>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Right: Video analytics (scrollable) -->
-        <div class="right-col glass-panel analytics-col">
-            <h3 class="panel-title">🎯 Frame Analysis</h3>
-            <div class="analytics-grid">
-                <div class="analytic-card">
-                    <div class="analytic-label">State</div>
-                    <div class="analytic-value" id="video-state">Waiting</div>
-                </div>
-                <div class="analytic-card">
-                    <div class="analytic-label">Direction</div>
-                    <div class="analytic-value" id="video-direction">--</div>
-                </div>
-                <div class="analytic-card highlight-primary">
-                    <div class="analytic-label">Velocity Y</div>
-                    <div class="analytic-value" id="video-v_y">--</div>
-                    <div class="analytic-unit">m/s</div>
-                </div>
-                <div class="analytic-card highlight-red">
-                    <div class="analytic-label">Accel Y</div>
-                    <div class="analytic-value" id="video-accel_y">--</div>
-                    <div class="analytic-unit">m/s²</div>
-                </div>
-                <div class="analytic-card">
-                    <div class="analytic-label">Smooth Y</div>
-                    <div class="analytic-value" id="video-y_smooth">--</div>
-                    <div class="analytic-unit">m</div>
-                </div>
-                <div class="analytic-card">
-                    <div class="analytic-label">Confidence</div>
-                    <div class="analytic-value" id="video-confidence">--</div>
-                </div>
-                <div class="analytic-card">
-                    <div class="analytic-label">Ball X</div>
-                    <div class="analytic-value" id="video-ball_x">--</div>
-                </div>
-                <div class="analytic-card">
-                    <div class="analytic-label">Ball Y</div>
-                    <div class="analytic-value" id="video-ball_y">--</div>
-                </div>
-            </div>
-            <div class="analytics-footer">
-                <div class="footer-stat"><span class="footer-label">Max |V|</span><span class="footer-value text-primary" id="video-max_v_y">--</span></div>
-                <div class="footer-stat"><span class="footer-label">Avg V</span><span class="footer-value" id="video-avg_v_y">--</span></div>
-            </div>
-        </div>
-    </div>
+<h2 class="section-label">How would you like to begin?</h2>
+<div class="mode-options">
+<button type="button" class="mode-card" onclick="App.start('live')">
+<span class="mode-symbol" aria-hidden="true">
+<svg viewBox="0 0 32 32">
+<rect x="3" y="8" width="18" height="16" rx="3"/>
+<path d="m21 13 8-4v14l-8-4z"/>
+</svg>
+</span>
+<span class="mode-copy">
+<strong>Start a live drill</strong>
+<span>Use the camera connected to this computer. Start, pause and finish when you're ready.</span>
+<small>For practice on the spot</small>
+</span>
+</button>
+<button type="button" class="mode-card" onclick="App.start('upload_prompt')">
+<span class="mode-symbol" aria-hidden="true">
+<svg viewBox="0 0 32 32">
+<rect x="5" y="3" width="22" height="26" rx="3"/>
+<path d="m13 11 8 5-8 5z"/>
+</svg>
+</span>
+<span class="mode-copy">
+<strong>Review a recording</strong>
+<span>Upload a drill video and work through it at your own pace. No camera needed.</span>
+<small>For focused session review</small>
+</span>
+</button>
 </div>
-
-
-<!-- ══════════════════════════════════════════════════════════
-     VIEW 4 — Session Results
-     ══════════════════════════════════════════════════════════ -->
-<div id="view-results" class="view">
-    <div class="results-container">
-        <h1 class="results-title">Session Complete</h1>
-        <p class="subtitle text-muted text-center">Full pipeline analysis summary</p>
-
-        <div class="stats-grid mt-4" style="grid-template-columns:repeat(2,1fr)">
-            <div class="stat-card glass-panel"><h4>Duration</h4><span class="value" id="res-duration">00:00:00</span></div>
-            <div class="stat-card glass-panel"><h4>Max |Velocity|</h4><span class="value text-primary" id="res-max-v">--</span><span class="card-unit">m/s</span></div>
-        </div>
-
-        <div class="stats-grid mt-4" style="grid-template-columns:repeat(2,1fr)">
-            <div class="stat-card glass-panel"><h4>Avg Velocity</h4><span class="value" id="res-avg-v">--</span><span class="card-unit">m/s</span></div>
-            <div class="stat-card glass-panel"><h4>Avg Acceleration</h4><span class="value" id="res-avg-a">--</span><span class="card-unit">m/s²</span></div>
-        </div>
-
-        <div class="text-center" style="margin-top:3rem">
-            <button class="btn btn-primary btn-lg" onclick="App.goHome()">Start New Session</button>
-        </div>
-    </div>
+<div class="method-note">
+<strong>Understand each estimate.</strong>
+<p>Tap counts are estimates from ball movement. Likely hand contact is excluded; unclear detections stay flagged for review.</p>
 </div>
-
-
-<!-- Toast notification -->
-<div id="toast" class="toast hidden"></div>
-
-
-<!-- ══════════════════════════════════════════════════════════
-     Application Controller (JS)
-     ══════════════════════════════════════════════════════════ -->
-<script>
-const App = (() => {
-    "use strict";
-
-    // ── Private state ──────────────────────────────────────
-    let sseSource         = null;
-    let globalVideoDuration = 0;
-    let lastReportedTime  = 0;
-    let videoFileReady    = false;
-    let liveSessionStarted = false;
-    let isScrubbing       = false;
-    let currentMode       = null;   // "live" | "video" | null
-
-    // DOM references (cached once on DOMContentLoaded)
-    const $ = (id) => document.getElementById(id);
-
-    // SSE field keys — must match both Python dict keys and HTML element IDs
-    const SSE_FIELDS = [
-        "v_y", "accel_y", "y_smooth", "state", "direction",
-        "confidence", "ball_x", "ball_y",
-        "max_v_y", "avg_v_y",
-    ];
-
-
-    // ── Helpers ────────────────────────────────────────────
-    function formatTime(sec) {
-        sec = Math.max(0, Math.floor(sec));
-        const h = String(Math.floor(sec / 3600)).padStart(2, "0");
-        const m = String(Math.floor((sec % 3600) / 60)).padStart(2, "0");
-        const s = String(sec % 60).padStart(2, "0");
-        return `${h}:${m}:${s}`;
-    }
-
-    function formatShort(sec) {
-        sec = Math.max(0, Math.floor(sec));
-        return String(Math.floor(sec / 60)).padStart(2, "0") + ":" +
-               String(sec % 60).padStart(2, "0");
-    }
-
-    function showToast(msg, ms = 3000) {
-        const t = $("toast");
-        t.textContent = msg;
-        t.classList.remove("hidden");
-        setTimeout(() => t.classList.add("hidden"), ms);
-    }
-
-    function switchView(id) {
-        document.querySelectorAll(".view").forEach(v => v.classList.remove("active"));
-        setTimeout(() => $(id).classList.add("active"), 50);
-    }
-
-    /** Send a control command to the Flask backend. */
-    function postControl(mode, action, timeSec = 0) {
-        return fetch("/video_control", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ mode, action, time: timeSec }),
-        });
-    }
-
-    function setButtonEnabled(btn, enabled) {
-        btn.disabled = !enabled;
-        btn.style.opacity = enabled ? "1" : "0.4";
-        btn.style.cursor  = enabled ? "pointer" : "not-allowed";
-    }
-
-
-    // ── SSE ────────────────────────────────────────────────
-    function connectSSE(mode) {
-        if (sseSource) sseSource.close();
-        sseSource = new EventSource("/stream_stats/" + mode);
-
-        sseSource.onmessage = (event) => {
-            const d = JSON.parse(event.data);
-            if (!d) return;
-
-            // Update all analytics DOM elements
-            SSE_FIELDS.forEach(key => {
-                const el = $(mode + "-" + key);
-                if (el && d[key] !== undefined) el.textContent = d[key];
-            });
-
-            // Sync play/pause buttons
-            if (mode === "live" && liveSessionStarted) {
-                $("btn-live-pause").textContent =
-                    d.play_state === "play" ? "Pause" : "Resume";
-                $("live-feed").classList.toggle("paused", d.play_state === "pause");
-            } else if (mode === "video") {
-                $("btn-video-play").textContent =
-                    d.play_state === "play" ? "Pause" : "Play";
-                $("video-feed").classList.toggle("paused", d.play_state === "pause");
-            }
-
-            // Timer
-            if (d.time !== undefined) {
-                lastReportedTime = d.time;
-                $(mode + "-timer").textContent = formatTime(d.time);
-            }
-
-            // Video scrubber (skip while user is dragging)
-            if (mode === "video" && d.duration && !isScrubbing) {
-                globalVideoDuration = d.duration;
-                $("video-timer-total").textContent   = formatShort(d.duration);
-                $("video-timer-current").textContent  = formatShort(d.time);
-                if (d.duration > 0) {
-                    $("video-scrubber").value = (d.time / d.duration) * 100;
-                }
-            }
-        };
-    }
-
-
-    // ── Navigation ─────────────────────────────────────────
-    function goHome() {
-        postControl("live", "pause");
-        postControl("video", "pause");
-        if (sseSource) { sseSource.close(); sseSource = null; }
-        videoFileReady = false;
-        liveSessionStarted = false;
-        currentMode = null;
-
-        $("live-feed").src  = "";
-        $("video-feed").src = "";
-        $("upload-zone").style.display = "flex";
-        $("upload-status").textContent = "Formats: MP4, AVI, MOV";
-        $("video-upload-input").value = "";
-
-        switchView("view-landing");
-    }
-
-
-    function start(mode) {
-        if (mode === "live") {
-            currentMode = "live";
-            liveSessionStarted = false;
-            switchView("view-live");
-
-            $("live-timer").textContent = "00:00:00";
-
-            // Pause button starts disabled
-            const pauseBtn = $("btn-live-pause");
-            setButtonEnabled(pauseBtn, false);
-            pauseBtn.textContent = "Pause";
-
-            // Session button starts as "Start Session"
-            const sessionBtn = $("btn-live-session");
-            sessionBtn.textContent = "Start Session";
-            sessionBtn.className = "btn btn-success lg";
-
-            // Camera OFF until Start Session
-            $("live-feed").src = "";
-            $("live-feed").classList.add("paused");
-            postControl("live", "pause");
-
-        } else if (mode === "upload_prompt") {
-            currentMode = "video";
-            videoFileReady = false;
-            switchView("view-video");
-
-            $("upload-zone").style.display = "flex";
-            $("video-feed").src = "";
-            $("video-timer").textContent          = "00:00:00";
-            $("video-timer-current").textContent   = "00:00";
-            $("video-timer-total").textContent      = "00:00";
-            $("video-scrubber").value = 0;
-            $("btn-video-play").textContent = "Play";
-        }
-    }
-
-
-    // ── Live session lifecycle ──────────────────────────────
-    function toggleLiveSession() {
-        const sessionBtn = $("btn-live-session");
-        const pauseBtn   = $("btn-live-pause");
-
-        if (!liveSessionStarted) {
-            // ▶ START
-            liveSessionStarted = true;
-            sessionBtn.textContent = "Stop Session";
-            sessionBtn.className = "btn btn-danger lg";
-            setButtonEnabled(pauseBtn, true);
-            pauseBtn.textContent = "Pause";
-
-            postControl("live", "play");
-            const feed = $("live-feed");
-            feed.classList.remove("paused");
-            feed.src = "/video_feed_live?t=" + Date.now();
-            connectSSE("live");
-        } else {
-            // ■ STOP
-            stopSession("live");
-        }
-    }
-
-    function toggleLivePause() {
-        if (!liveSessionStarted) return;
-        const btn = $("btn-live-pause");
-        postControl("live", btn.textContent === "Pause" ? "pause" : "play");
-    }
-
-
-    // ── Video controls ─────────────────────────────────────
-    function handleUpload() {
-        const input = $("video-upload-input");
-        if (!input.files.length) return;
-
-        const file = input.files[0];
-        $("upload-status").innerHTML = `Uploading <strong>${file.name}</strong>…`;
-
-        const form = new FormData();
-        form.append("video", file);
-
-        fetch("/upload_video", { method: "POST", body: form })
-            .then(r => r.json())
-            .then(data => {
-                if (data.message) {
-                    videoFileReady = true;
-                    $("upload-zone").style.display = "none";
-                    const feed = $("video-feed");
-                    feed.src = "/video_feed_file?t=" + Date.now();
-                    feed.classList.remove("paused");
-                    $("btn-video-play").textContent = "Pause";
-                    connectSSE("video");
-                    showToast("✅ Video uploaded & processing started!");
-                } else {
-                    $("upload-status").textContent = "Upload failed.";
-                    showToast("❌ Upload failed!");
-                }
-            })
-            .catch(() => {
-                $("upload-status").textContent = "Network error!";
-                showToast("❌ Network error.");
-            });
-    }
-
-    function toggleVideoState() {
-        if (!videoFileReady) {
-            showToast("⚠️ Please upload a video file first!");
-            return;
-        }
-        const btn = $("btn-video-play");
-        postControl("video", btn.textContent === "Pause" ? "pause" : "play");
-    }
-
-    function seekVideo(percent) {
-        isScrubbing = false;
-        if (!videoFileReady) {
-            showToast("⚠️ Please upload a video file first!");
-            $("video-scrubber").value = 0;
-            return;
-        }
-        if (globalVideoDuration <= 0) return;
-        const t = (percent / 100) * globalVideoDuration;
-        postControl("video", "seek", t).then(() => postControl("video", "play"));
-    }
-
-
-    // ── Stop & Results ─────────────────────────────────────
-    function stopSession(mode) {
-        postControl(mode, "pause");
-        $("live-feed").src  = "";
-        $("video-feed").src = "";
-        if (sseSource) { sseSource.close(); sseSource = null; }
-
-        fetch("/session_summary/" + mode)
-            .then(r => r.json())
-            .then(d => {
-                $("res-duration").textContent = formatTime(mode === "video" ? lastReportedTime : d.elapsed);
-                $("res-max-v").textContent    = d.max_velocity;
-                $("res-avg-v").textContent    = d.avg_velocity;
-                $("res-avg-a").textContent    = d.avg_accel;
-                switchView("view-results");
-            })
-            .catch(() => {
-                $("res-duration").textContent = formatTime(lastReportedTime);
-                switchView("view-results");
-            });
-    }
-
-
-    // ── Initialisation ─────────────────────────────────────
-    document.addEventListener("DOMContentLoaded", () => {
-        const scrubber = $("video-scrubber");
-        scrubber.addEventListener("mousedown",  () => { isScrubbing = true; });
-        scrubber.addEventListener("touchstart", () => { isScrubbing = true; });
-    });
-
-
-    // ── Public API ─────────────────────────────────────────
-    return {
-        start,
-        goHome,
-        toggleLiveSession,
-        toggleLivePause,
-        handleUpload,
-        toggleVideoState,
-        seekVideo,
-        stopSession,
-    };
-})();
-</script>
-
+</div>
+<aside class="setup-guide">
+<div class="guide-top">
+<span class="eyebrow">BEFORE YOU BEGIN</span>
+<span class="guide-tag">Hammer + golf ball</span>
+</div>
+<svg class="drill-diagram" viewBox="0 0 380 260" role="img" aria-label="A ball rises from a hammer head and returns along a vertical path">
+<path d="M55 212H325" stroke="#c9d2d5"/>
+<path d="M194 167V58" stroke="#718b90" stroke-dasharray="5 7" fill="none"/>
+<path d="M225 68c20 32 20 65 0 96" stroke="#718b90" stroke-dasharray="5 7" fill="none"/>
+<circle cx="194" cy="54" r="18" fill="#fff" stroke="#1c6861" stroke-width="2"/>
+<circle cx="188" cy="49" r="2" fill="#cedbd6"/>
+<circle cx="198" cy="59" r="2" fill="#cedbd6"/>
+<circle cx="202" cy="47" r="2" fill="#cedbd6"/>
+<path d="m142 223 40-37" stroke="#9b7050" stroke-width="15" stroke-linecap="round"/>
+<rect x="170" y="158" width="70" height="26" rx="4" fill="#273a40" transform="rotate(8 205 171)"/>
+<text x="52" y="80">Tap upward.</text>
+<text x="52" y="102">Let it return.</text>
+<text x="52" y="124">Repeat.</text>
+</svg>
+<h2>A clear view makes a better review.</h2>
+<ul class="checklist">
+<li>Keep the ball and hammer head inside the frame.</li>
+<li>Use steady lighting and a fixed camera position.</li>
+<li>Leave space above the ball's highest point.</li>
+<li>Pick the ball up to reset; hand contact should not count as a tap.</li>
+</ul>
+</aside>
+</div>
+</section>
+{% for mode in ['live','video'] %}
+<section id="view-{{ mode }}" class="view" aria-labelledby="{{ mode }}-heading">
+<div class="workspace-heading">
+<div>
+<p class="eyebrow">{{ 'LIVE PRACTICE' if mode == 'live' else 'RECORDING REVIEW' }}</p>
+<h1 id="{{ mode }}-heading">{{ 'Ready for your next set.' if mode == 'live' else 'A closer look at your drill.' }}</h1>
+<p id="{{ mode }}-session-name" class="session-name">Hammer drill session</p>
+</div>
+<button class="btn btn-quiet" onclick="App.goHome()">Back to setup</button>
+</div>
+<div class="workspace-grid">
+<div class="video-column">
+<div class="video-shell">
+<div class="video-topline">
+<span>{{ 'Connected camera' if mode == 'live' else 'Drill recording' }}</span>
+<span id="{{ mode }}-playback-label">Ready</span>
+</div>
+<div class="video-stage">
+<img id="{{ mode }}-feed" alt="{{ 'Live camera' if mode == 'live' else 'Analyzed drill video' }}">
+{% if mode == 'live' %}<div class="feed-placeholder" id="live-placeholder">
+<svg viewBox="0 0 48 48" aria-hidden="true">
+<rect x="6" y="12" width="26" height="24" rx="4"/>
+<path d="m32 19 10-5v20l-10-5z"/>
+</svg>
+<h2>Your camera starts when you do.</h2>
+<p>Position the camera, then select Start session.</p>
+</div>{% else %}
+<div id="upload-zone" class="feed-placeholder upload-zone">
+<span class="upload-outline" aria-hidden="true">+</span>
+<h2>Choose a drill recording</h2>
+<p>Pick a clear clip with the full ball path visible.</p>
+<input type="file" id="video-upload-input" accept=".mp4,.avi,.mov,.mkv,.webm" class="visually-hidden" onchange="App.handleUpload()">
+<button class="btn btn-primary" id="choose-video" onclick="document.getElementById('video-upload-input').click()">Choose video</button>
+<p id="upload-status" class="file-help">MP4, AVI, MOV, MKV or WEBM - up to 500 MB</p>
+</div>{% endif %}</div>
+<div class="video-caption">
+<span class="legend-dot ball-dot">
+</span>Ball tracking <span class="legend-dot hand-dot">
+</span>Hand check at candidate taps <span class="legend-dot ignored-dot">
+</span>Ignored tap</div>
+</div>
+<div class="control-panel">
+{% if mode == 'video' %}<div class="scrubber-row">
+<span id="video-timer-current">00:00</span>
+<input type="range" id="video-scrubber" min="0" max="100" value="0" step="0.1" aria-label="Video position" disabled>
+<span id="video-timer-total">00:00</span>
+</div>
+<p class="seek-note">Seek freely to preview. Finish review analyzes the entire recording.</p>{% endif %}
+<div class="control-row">
+<div>
+<span class="control-label">{{ 'Active time' if mode == 'live' else 'Video position' }}</span>
+<strong class="timer" id="{{ mode }}-timer">00:00:00</strong>
+</div>
+<div class="actions">{% if mode == 'live' %}<button class="btn btn-secondary" id="btn-live-pause" onclick="App.toggleLivePause()" disabled>Pause</button>
+<button class="btn btn-primary" id="btn-live-session" onclick="App.toggleLiveSession()">Start session</button>{% else %}<button class="btn btn-secondary" id="btn-video-play" onclick="App.toggleVideoState()" disabled>Play</button>
+<button class="btn btn-primary" id="btn-video-finish" onclick="App.stopSession('video')" disabled>Finish review</button>{% endif %}</div>
+</div>
+</div>
+{% if mode == 'video' %}<div id="review-progress" hidden role="status" aria-live="polite">
+<strong id="review-progress-label">Analyzing the entire recording...</strong>
+<progress id="review-progress-bar" max="100" value="0" aria-label="Full recording analysis progress"></progress>
+<button class="btn btn-secondary" onclick="App.cancelReview()">Cancel analysis</button>
+</div>{% endif %}
+<div class="session-cue">
+<strong id="{{ mode }}-session-cue">{{ 'Keep the camera steady and the full ball path in view.' if mode == 'live' else 'Choose a recording to begin. Every frame is analyzed; playback may be slower than the original.' }}</strong>
+</div>
+<details class="motion-panel">
+<summary>Motion estimates <span>Advanced</span>
+</summary>
+<p class="small-note">Approximate metric values use a preset camera scale. Recalibrate for changes in resolution or camera distance. Positive vertical velocity means downward motion.</p>
+<div class="motion-grid">{% for key,label,unit in [('v_y','Vertical velocity','m/s'),('accel_y','Vertical acceleration','m/s²'),('y_smooth','Smoothed height coordinate','m'),('direction','Movement direction',''),('confidence','Ball confidence',''),('ball_x','Horizontal coordinate','m'),('ball_y','Vertical coordinate','m'),('max_v_y','Peak vertical speed','m/s'),('avg_v_y','Mean vertical velocity','m/s')] %}<div>
+<span>{{ label }}</span>
+<strong id="{{ mode }}-{{ key }}">--</strong>
+<small>{{ unit }}</small>
+</div>{% endfor %}</div>
+</details>
+</div>
+<aside class="session-sidebar">
+<section class="score-panel">
+<div class="panel-heading">
+<h2>This set</h2>
+<span id="{{ mode }}-state" class="status-label">Waiting</span>
+</div>
+<div class="main-score">
+<strong id="{{ mode }}-hit_count">0</strong>
+<span>Estimated taps</span>
+</div>
+<div class="score-pair">
+<div>
+<strong id="{{ mode }}-current_streak">0</strong>
+<span>Current streak</span>
+</div>
+<div>
+<strong id="{{ mode }}-best_streak">0</strong>
+<span>Best streak</span>
+</div>
+</div>
+<div class="goal-row">
+<span id="{{ mode }}-goal-label">No tap target set</span>
+<progress id="{{ mode }}-goal-progress" max="100" value="0" aria-label="Progress toward tap target">
+</progress>
+</div>
+</section>
+<section class="review-panel hand-check-panel">
+<div class="panel-heading">
+<h2>Hand-contact checks</h2>
+<span class="review-tag">Review aid</span>
+</div>
+<p id="{{ mode }}-hand_status">Checks run at candidate taps</p>
+<div class="review-count">
+<strong id="{{ mode }}-rejected_count">0</strong>
+<span>Ignored taps<br>
+<small>Excluded from the count and streak</small>
+</span>
+</div>
+<p class="small-note">Landmarks appear briefly when a possible tap is checked. An unclear hand pose alone does not prove contact.</p>
+<details>
+<summary>Check timing</summary>
+<p class="small-note">
+<span id="{{ mode }}-hand_check_ms">0</span> ms for the last check.</p>
+</details>
+</section>
+<section class="review-panel">
+<div class="panel-heading">
+<h2>Set activity</h2>
+<span id="{{ mode }}-last_event_badge" class="hm-badge">--</span>
+</div>
+<div id="{{ mode }}-timeline_text" class="activity-text">No events yet</div>
+<p class="break-count">
+<strong id="{{ mode }}-miss_count">0</strong> streak breaks</p>
+<p class="small-note">A break is inferred after a gap without a counted tap or prolonged tracking loss. It is not a verified missed strike.</p>
+</section>
+</aside>
+</div>
+</section>
+{% endfor %}
+<section id="view-results" class="view" aria-labelledby="results-heading">
+<div class="workspace-heading">
+<div>
+<p class="eyebrow">SESSION REVIEW</p>
+<h1 id="results-heading">What happened in this set.</h1>
+<p id="results-session-name">Hammer drill session</p>
+</div>
+<button class="btn btn-secondary" onclick="App.goHome()">New session</button>
+</div>
+<div class="results-scoreboard">
+<div>
+<span>Estimated taps</span>
+<strong id="res-total-hits">0</strong>
+</div>
+<div>
+<span>Best streak</span>
+<strong id="res-best-streak">0</strong>
+</div>
+<div>
+<span>Active time / position</span>
+<strong id="res-duration">00:00:00</strong>
+</div>
+<div>
+<span>Streak breaks</span>
+<strong id="res-total-misses">0</strong>
+</div>
+</div>
+<div class="results-grid">
+<div>
+<section class="review-panel">
+<div class="panel-heading">
+<h2>Session timeline</h2>
+<span class="review-tag">Estimated events</span>
+</div>
+<p id="res-timeline-text">No events yet</p>
+<div id="res-timeline-visual" class="timeline-visual">
+</div>
+<div id="results-session-insight" class="session-insight">Review the timeline alongside the recording before drawing conclusions.</div>
+</section>
+<section class="review-panel notes-panel">
+<label for="session-notes">Session notes</label>
+<textarea id="session-notes" rows="4" placeholder="What went well? What would you like to improve next?">
+</textarea>
+<p class="small-note">Notes stay in this review until you start a new session. Download the report to keep a copy.</p>
+<div class="actions">
+<button class="btn btn-primary" onclick="App.downloadReport()">Download session report</button>
+<button class="btn btn-secondary" onclick="window.print()">Print review</button>
+</div>
+</section>
+</div>
+<aside>
+<section class="review-panel">
+<h2>Checks worth reviewing</h2>
+<dl class="result-checks">
+<div>
+<dt>Ignored taps</dt>
+<dd id="res-rejected-count">0</dd>
+</div>
+<div>
+<dt>Likely hand contact</dt>
+<dd id="res-hand-contact-count">0</dd>
+</div>
+<div>
+<dt>Unverified candidates</dt>
+<dd id="res-unverified-count">0</dd>
+</div>
+<div>
+<dt>Counted taps with unclear hand pose</dt>
+<dd id="res-uncertain-hit-count">0</dd>
+</div>
+</dl>
+<p class="small-note">Ignored candidates are excluded. Counted taps with an unclear hand pose remain estimates and deserve a closer look.</p>
+</section>
+<details class="motion-panel">
+<summary>Motion summary</summary>
+<dl class="result-checks">
+<div>
+<dt>Peak vertical speed (m/s)</dt>
+<dd id="res-max-v">--</dd>
+</div>
+<div>
+<dt>Mean vertical velocity (m/s)</dt>
+<dd id="res-avg-v">--</dd>
+</div>
+<div>
+<dt>Mean vertical acceleration (m/s²)</dt>
+<dd id="res-avg-a">--</dd>
+</div>
+</dl>
+<p class="small-note">Approximate estimates. A preset camera scale has not been validated for every recording.</p>
+</details>
+</aside>
+</div>
+</section>
+</main>
+<footer class="site-footer">
+<span>HAMMER DRILL</span>
+<p>Built for focused practice. Estimates support your review; you decide what to work on next.</p>
+</footer>
+<div id="toast" class="toast hidden" role="status" aria-live="polite">
+</div>
 </body>
 </html>

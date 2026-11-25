@@ -5,7 +5,7 @@ import cv2
 
 class KalmanTracker:
     """Encapsulates Kalman Filter logic for 2D coordinate tracking."""
-    
+
     def __init__(self, max_trail: int = 30):
         self.max_trail = max_trail
         self.trail = deque(maxlen=self.max_trail)
@@ -32,7 +32,7 @@ class KalmanTracker:
         """Predict the next state. Returns predicted (x, y) if initialised."""
         if not self.initialised:
             return None
-            
+
         pred = self.kf.predict()
         px, py = int(pred[0].item()), int(pred[1].item())
         return (px, py)
@@ -40,17 +40,12 @@ class KalmanTracker:
     def update(self, center: Tuple[int, int]):
         """Update the Kalman filter with a new measurement and append to trail."""
         if not self.initialised:
-            m = np.array([[np.float32(center[0])],
-                          [np.float32(center[1])]])
-            self.kf.statePre = np.array(
-                [[m[0][0]], [m[1][0]], [0], [0]], np.float32
-            )
+            self.kf.statePost = np.array([[center[0]], [center[1]], [0], [0]], np.float32)
+            self.kf.statePre = self.kf.statePost.copy()
+            self.kf.errorCovPost = np.eye(4, dtype=np.float32)
             self.initialised = True
-            
-        self.kf.correct(np.array(
-            [[np.float32(center[0])],
-             [np.float32(center[1])]]
-        ))
+        else:
+            self.kf.correct(np.array([[center[0]], [center[1]]], dtype=np.float32))
         self.trail.append(center)
 
     def mark_lost(self, predicted_pos: Optional[Tuple[int, int]]):
